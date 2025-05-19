@@ -216,7 +216,7 @@ The script verifies:
 
 ## About UI Design
 
-![UI Design Preview](./UIdesignDemo20250518_022624%20-%20Copy.jpg)
+![UI Design Preview](assets/UIdesignDemo20250518_022624 - Copy.jpg)
 
 *UI Design Preview*
 
