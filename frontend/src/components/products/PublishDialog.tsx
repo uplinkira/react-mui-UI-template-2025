@@ -5,10 +5,8 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
-// 示例分类，实际使用时需要替换
-const categories = ['分类1', '分类2', '分类3', '分类4'];
-// 示例城市，实际使用时需要替换
-const cities = ['城市1', '城市2', '城市3', '城市4', '城市5'];
+const categories = ['cat 1', 'cat 2', 'cat 3', 'cat 4'];
+const cities = ['[城市1]', '[城市2]', '[城市3]', '[城市4]', '[城市5]', '[城市6]', '[城市7]', '[城市8]', '[城市9]', '[城市10]'];
 
 export interface PublishProduct {
   id: string;
@@ -160,7 +158,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({ open, onClose, onAddProdu
           fontWeight: 'bold',
         }
       }}>
-        发布[商品类型]信息
+        发布二手乐器信息
       </DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent sx={{ 

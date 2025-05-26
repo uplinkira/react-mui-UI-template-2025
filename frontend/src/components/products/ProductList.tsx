@@ -1,96 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Typography, Box, Pagination, CircularProgress } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Typography, Box, Pagination, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import ProductCard from './ProductCard';
+import ProductSkeleton from './ProductSkeleton';
 import { PublishProduct } from './PublishDialog';
-
-// 临时数据，后续会从API获取
-const mockProducts = [
-  // 分类1 - 5个商品
-  {
-    id: '1',
-    title: '分类1商品1',
-    price: 999,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类1',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  {
-    id: '2',
-    title: '分类1商品2',
-    price: 888,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类1',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  {
-    id: '3',
-    title: '分类1商品3',
-    price: 777,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类1',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  {
-    id: '4',
-    title: '分类1商品4',
-    price: 666,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类1',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  {
-    id: '5',
-    title: '分类1商品5',
-    price: 555,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类1',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  // 分类2 - 3个商品
-  {
-    id: '6',
-    title: '分类2商品1',
-    price: 444,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类2',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  {
-    id: '7',
-    title: '分类2商品2',
-    price: 333,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类2',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  {
-    id: '8',
-    title: '分类2商品3',
-    price: 222,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类2',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  // 分类3 - 1个商品
-  {
-    id: '9',
-    title: '分类3商品1',
-    price: 111,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类3',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  },
-  // 分类4 - 1个商品
-  {
-    id: '10',
-    title: '分类4商品1',
-    price: 100,
-    image: 'https://via.placeholder.com/300x200',
-    category: '分类4',
-    description: '这是一个示例商品描述，请根据实际需求修改。'
-  }
-];
+import { mockProducts, Product } from '../../data/mockProducts';
+import { mergeProducts, categoryMap } from '../../utils/productUtils';
 
 interface ProductListProps {
   products?: PublishProduct[];
@@ -102,45 +17,88 @@ const ITEMS_PER_PAGE = 3; // 每页显示3个产品
 const ProductList: React.FC<ProductListProps> = ({ products, category }) => {
   const { category: urlCategory } = useParams<{ category: string }>();
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [displayCount, setDisplayCount] = useState(1); // 当前页面显示的商品数量
-  const observer = useRef<IntersectionObserver>();
+  const [visibleProducts, setVisibleProducts] = useState<Product[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [sortBy, setSortBy] = useState('default');
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
   
-  // 分类映射
-  const categoryMap: { [key: string]: string } = {
-    'category1': '分类1',
-    'category2': '分类2',
-    'category3': '分类3',
-    'category4': '分类4'
-  };
-
-  // 合并mockProducts和localStorage中的产品
+  // 使用共享的mergeProducts函数
   const allProducts = React.useMemo(() => {
-    const productMap = new Map();
-    
-    mockProducts.forEach(product => {
-      productMap.set(product.id, product);
-    });
-    
-    if (products && products.length > 0) {
-      products.forEach(product => {
-        productMap.set(product.id, product);
-      });
-    }
-    
-    return Array.from(productMap.values()).sort((a, b) => {
-      return parseInt(b.id) - parseInt(a.id);
-    });
+    return mergeProducts(mockProducts, products);
   }, [products]);
 
-  // 获取当前分类
+  // 优先用props.category，否则用urlCategory，并都映射为中文
   const categoryKey = category || urlCategory;
   const categoryName = categoryKey ? categoryMap[categoryKey] : undefined;
 
-  // 根据分类筛选产品
-  const filteredProducts = categoryName
-    ? allProducts.filter(product => product.category === categoryName)
-    : allProducts;
+  // 监听搜索事件
+  useEffect(() => {
+    const handleSearch = (event: CustomEvent<{ query: string }>) => {
+      setSearchQuery(event.detail.query);
+      setPage(1); // 重置页码
+      setCurrentIndex(0); // 重置当前索引
+      setVisibleProducts([]); // 清空可见产品
+    };
+
+    window.addEventListener('search-products', handleSearch as EventListener);
+    return () => {
+      window.removeEventListener('search-products', handleSearch as EventListener);
+    };
+  }, []);
+
+  // 改进分类和搜索筛选逻辑
+  const filteredProducts = React.useMemo(() => {
+    let result = allProducts;
+    
+    // 分类筛选
+    if (categoryName) {
+      result = result.filter(product => product.category === categoryName);
+    }
+    
+    // 搜索过滤
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(product => 
+        product.title.toLowerCase().includes(query) ||
+        product.description.toLowerCase().includes(query) ||
+        product.city.toLowerCase().includes(query) ||
+        product.category.toLowerCase().includes(query)
+      );
+    }
+
+    // 价格范围过滤
+    if (priceRange.min) {
+      result = result.filter(product => product.price >= Number(priceRange.min));
+    }
+    if (priceRange.max) {
+      result = result.filter(product => product.price <= Number(priceRange.max));
+    }
+
+    // 排序
+    switch (sortBy) {
+      case 'price-asc':
+        result.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-desc':
+        result.sort((a, b) => b.price - a.price);
+        break;
+      case 'name-asc':
+        result.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'name-desc':
+        result.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      default:
+        // 最新发布（id 越大越新）
+        result.sort((a, b) => Number(b.id) - Number(a.id));
+    }
+
+    return result;
+  }, [allProducts, categoryName, searchQuery, priceRange, sortBy]);
 
   // 计算总页数
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
@@ -151,58 +109,213 @@ const ProductList: React.FC<ProductListProps> = ({ products, category }) => {
     page * ITEMS_PER_PAGE
   );
 
-  // 获取当前页面内要显示的产品
-  const displayedProducts = currentPageProducts.slice(0, displayCount);
+  // 设置 Intersection Observer
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && currentIndex < currentPageProducts.length && !isLoading) {
+          // 当加载指示器进入视图时，加载下一个产品
+          setIsLoading(true);
+          setTimeout(() => {
+            setVisibleProducts(prev => [...prev, currentPageProducts[currentIndex]]);
+            setCurrentIndex(prev => prev + 1);
+            setIsLoading(false);
+          }, 500);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadingRef.current) {
+      observerRef.current.observe(loadingRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [currentIndex, currentPageProducts, isLoading]);
+
+  // 当页面、分类或搜索条件改变时重置状态
+  useEffect(() => {
+    setCurrentIndex(0);
+    setVisibleProducts([]);
+  }, [page, categoryKey, searchQuery, priceRange, sortBy]);
 
   // 处理页面切换
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
-    setDisplayCount(1); // 切换页面时重置显示数量
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 处理滑动加载
-  const lastProductElementRef = useCallback((node: HTMLDivElement) => {
-    if (loading) return;
-    if (observer.current) observer.current.disconnect();
-    
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && displayCount < currentPageProducts.length) {
-        setLoading(true);
-        setTimeout(() => {
-          setDisplayCount(prev => prev + 1);
-          setLoading(false);
-        }, 500);
-      }
-    });
-    
-    if (node) observer.current.observe(node);
-  }, [loading, displayCount, currentPageProducts.length]);
-
   return (
     <>
-      {categoryName && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            {categoryName}
-          </Typography>
-        </Box>
-      )}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mb: 4 }}>
-        {displayedProducts.map((product, index) => (
-          <Box 
-            key={product.id}
-            ref={index === displayedProducts.length - 1 ? lastProductElementRef : null}
+      {/* 分类标题和筛选器整体居中对齐 */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
+        {/* 进一步优化的分段胶囊栏 */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'stretch',
+            justifyContent: 'center',
+            border: '2px solid #222',
+            borderRadius: '999px',
+            bgcolor: 'transparent',
+            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.03)',
+            width: 'fit-content',
+            minHeight: 48,
+            overflow: 'visible',
+            px: 0,
+            py: 0,
+          }}
+        >
+          {/* 最低价格 */}
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              px: 3,
+              bgcolor: 'transparent',
+              borderRadius: '999px 0 0 999px',
+              fontWeight: 700,
+              fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              minHeight: 44,
+              '&:hover': {
+                bgcolor: '#F7C5CC',
+                fontWeight: 700,
+              },
+            }}
           >
+            <TextField
+              label="最低价格"
+              type="number"
+              value={priceRange.min}
+              onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+              variant="standard"
+              InputProps={{
+                disableUnderline: true,
+                sx: { fontWeight: 700, fontSize: '1rem', bgcolor: 'transparent', textAlign: 'center', minHeight: 36 },
+              }}
+              inputProps={{ style: { textAlign: 'center' } }}
+              sx={{ width: 80, bgcolor: 'transparent', textAlign: 'center', minHeight: 36 }}
+              size="small"
+            />
+          </Box>
+          {/* 分隔线容器 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, bgcolor: 'transparent' }}>
+            <Box sx={{ width: 2, height: '60%', bgcolor: '#222', borderRadius: 1 }} />
+          </Box>
+          {/* 最高价格 */}
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              px: 3,
+              bgcolor: 'transparent',
+              borderRadius: 0,
+              fontWeight: 700,
+              fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              minHeight: 44,
+              '&:hover': {
+                bgcolor: '#F7C5CC',
+                fontWeight: 700,
+              },
+            }}
+          >
+            <TextField
+              label="最高价格"
+              type="number"
+              value={priceRange.max}
+              onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+              variant="standard"
+              InputProps={{
+                disableUnderline: true,
+                sx: { fontWeight: 700, fontSize: '1rem', bgcolor: 'transparent', textAlign: 'center', minHeight: 36 },
+              }}
+              inputProps={{ style: { textAlign: 'center' } }}
+              sx={{ width: 80, bgcolor: 'transparent', textAlign: 'center', minHeight: 36 }}
+              size="small"
+            />
+          </Box>
+          {/* 分隔线容器 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, bgcolor: 'transparent' }}>
+            <Box sx={{ width: 2, height: '60%', bgcolor: '#222', borderRadius: 1 }} />
+          </Box>
+          {/* 排序方式（高亮粉色） */}
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              px: 3,
+              bgcolor: sortBy !== 'default' ? '#F7C5CC' : 'transparent',
+              borderRadius: '0 999px 999px 0',
+              fontWeight: 700,
+              fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              minHeight: 44,
+              '&:hover': {
+                bgcolor: '#F7C5CC',
+                fontWeight: 700,
+              },
+            }}
+          >
+            <FormControl variant="standard" size="small" sx={{ minWidth: 120, bgcolor: 'transparent', width: '100%' }}>
+              <Select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                disableUnderline
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  bgcolor: 'transparent',
+                  textAlign: 'center',
+                  width: '100%',
+                  '& .MuiSelect-select': { p: 0, textAlign: 'center' },
+                  minHeight: 36,
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: { fontWeight: 700, fontSize: '1rem', textAlign: 'center' }
+                  }
+                }}
+              >
+                <MenuItem value="default">最新发布</MenuItem>
+                <MenuItem value="price-asc">价格从低到高</MenuItem>
+                <MenuItem value="price-desc">价格从高到低</MenuItem>
+                <MenuItem value="name-asc">名称 A-Z</MenuItem>
+                <MenuItem value="name-desc">名称 Z-A</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mb: 4 }}>
+        {visibleProducts.map((product) => (
+          <Box key={product.id}>
             <ProductCard {...product} />
           </Box>
         ))}
+        {/* 加载指示器 */}
+        {currentIndex < currentPageProducts.length && (
+          <Box ref={loadingRef}>
+            <ProductSkeleton />
+          </Box>
+        )}
       </Box>
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress />
-        </Box>
-      )}
+
       {/* 分页控件 */}
       <Box sx={{ 
         display: 'flex', 

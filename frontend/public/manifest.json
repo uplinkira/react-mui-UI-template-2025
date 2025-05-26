@@ -1,6 +1,6 @@
 {
-  "short_name": "[应用简称]",
-  "name": "[应用全称]",
+  "short_name": "二手乐器交易",
+  "name": "二手乐器交易平台",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,6 +10,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#F193B7",
+  "background_color": "#F6F6F6"
 } 

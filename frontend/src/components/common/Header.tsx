@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Toolbar, Box, Typography, Button, IconButton, Tooltip, InputBase, Paper, Avatar } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
@@ -6,10 +6,20 @@ import LogoutIcon from '@mui/icons-material/Logout';
 
 const HEADER_HEIGHT = 80;
 
+// 防抖函数
+const debounce = (func: Function, wait: number) => {
+  let timeout: NodeJS.Timeout;
+  return (...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
+
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const checkLoginStatus = () => {
@@ -43,6 +53,36 @@ const Header: React.FC = () => {
     setIsLoggedIn(false);
     setUsername('');
     navigate('/');
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Search submitted:', searchQuery);
+    // 触发搜索事件
+    const event = new CustomEvent('search-products', {
+      detail: { query: searchQuery }
+    });
+    console.log('Dispatching search event:', event);
+    window.dispatchEvent(event);
+  };
+
+  // 使用 useCallback 和防抖优化搜索处理
+  const debouncedSearch = useCallback(
+    debounce((query: string) => {
+      const event = new CustomEvent('search-products', {
+        detail: { query }
+      });
+      console.log('Dispatching search event:', event);
+      window.dispatchEvent(event);
+    }, 300),
+    []
+  );
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    console.log('Search input changed:', value);
+    setSearchQuery(value);
+    debouncedSearch(value);
   };
 
   return (
@@ -89,6 +129,7 @@ const Header: React.FC = () => {
           <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', mx: 4 }}>
             <Paper
               component="form"
+              onSubmit={handleSearch}
               sx={{
                 p: '2px 8px',
                 display: 'flex',
@@ -102,8 +143,10 @@ const Header: React.FC = () => {
             >
               <InputBase
                 sx={{ ml: 1, flex: 1, fontSize: 16 }}
-                placeholder="搜索您需要的[商品类型]"
+                placeholder="搜索[产品类型]/[城市]"
                 inputProps={{ 'aria-label': 'search' }}
+                value={searchQuery}
+                onChange={handleSearchChange}
               />
               <IconButton type="submit" sx={{ p: '6px', color: '#222' }} aria-label="search">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
+import { ThemeProvider, CssBaseline } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProductList from './components/products/ProductList';
+import ProductDetail from './components/products/ProductDetail';
 import Layout from './components/common/Layout';
 import { PublishProduct } from './components/products/PublishDialog';
+import Agreement from './pages/Agreement';
+import CategoryList from './pages/CategoryList';
+import PublishDialog from './components/products/PublishDialog';
+import PublishButton from './components/common/PublishButton';
 
 const getInitialProducts = () => {
   const saved = localStorage.getItem('products');
@@ -18,10 +22,28 @@ const getInitialProducts = () => {
 
 function App() {
   const [products, setProducts] = useState<PublishProduct[]>(getInitialProducts());
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('products', JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    const handleOpenDialog = () => {
+      setDialogOpen(true);
+    };
+
+    window.addEventListener('open-publish-dialog', handleOpenDialog);
+    return () => {
+      window.removeEventListener('open-publish-dialog', handleOpenDialog);
+    };
+  }, []);
+
+  const handleAddProduct = (product: PublishProduct) => {
+    const updatedProducts = [product, ...products];
+    localStorage.setItem('products', JSON.stringify(updatedProducts));
+    setProducts(updatedProducts);
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -40,7 +62,15 @@ function App() {
             path="/category/:category"
             element={
               <Layout>
-                <ProductList products={products} />
+                <CategoryList products={products} />
+              </Layout>
+            }
+          />
+          <Route
+            path="/product/:id"
+            element={
+              <Layout>
+                <ProductDetail products={products} />
               </Layout>
             }
           />
@@ -60,7 +90,20 @@ function App() {
               </Layout>
             }
           />
+          <Route
+            path="/agreement"
+            element={
+              <Layout>
+                <Agreement />
+              </Layout>
+            }
+          />
         </Routes>
+        <PublishDialog 
+          open={dialogOpen} 
+          onClose={() => setDialogOpen(false)} 
+          onAddProduct={handleAddProduct} 
+        />
       </Router>
     </ThemeProvider>
   );

@@ -33,52 +33,49 @@ const ProductCard: React.FC<ProductCardProps> = ({
   city,
   location
 }) => {
-  const [isFavorite, setIsFavorite] = React.useState(false);
-
-  const handleFavoriteClick = () => {
-    setIsFavorite(!isFavorite);
-  };
-
   return (
     <Card
       component={RouterLink}
       to={`/product/${id}`}
       sx={{
+        height: '100%',
         display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        height: { xs: 'auto', sm: 280 },
-        position: 'relative',
-        border: '2px solid #000',
+        flexDirection: { xs: 'column', md: 'row' },
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        border: '2px solid #222',
         borderRadius: 2,
-        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
-        transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+        width: '70%',
+        mx: 'auto',
         textDecoration: 'none',
+        overflow: 'hidden',
         '&:hover': {
           transform: 'translateY(-4px)',
-          boxShadow: '0 3px 6px rgba(0, 0, 0, 0.3)'
-        }
+          boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+        },
       }}
     >
-      <CardMedia
-        component="img"
+      <Box
         sx={{
-          width: { xs: '100%', sm: 320 },
-          height: { xs: 200, sm: '100%' },
-          objectFit: 'cover',
-          borderRight: { sm: '2px solid #000' }
+          width: { xs: '100%', md: '40%' },
+          flexShrink: 0,
+          borderRight: { md: '2px solid #222' },
+          borderBottom: { xs: '2px solid #222', md: 'none' },
         }}
-        image={image}
-        alt={title}
-      />
+      >
+        <CardMedia
+          component="img"
+          sx={{
+            width: '100%',
+            height: { xs: '300px', md: '100%' },
+            objectFit: 'cover',
+          }}
+          image={image}
+          alt={title}
+        />
+      </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <CardContent sx={{ 
-          flexGrow: 1, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          p: 3,
-          height: '100%'
-        }}>
-          <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        <CardContent sx={{ flexGrow: 1, p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
             <Chip
               label={category}
               size="medium"
@@ -120,7 +117,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
-              mb: 2,
               fontSize: { xs: '1.5rem', sm: '2rem' }
             }}
           >
@@ -130,42 +126,46 @@ const ProductCard: React.FC<ProductCardProps> = ({
             variant="body1"
             color="text.secondary"
             sx={{
-              mb: 2,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               display: '-webkit-box',
               WebkitLineClamp: 3,
               WebkitBoxOrient: 'vertical',
-              fontSize: '1.2rem',
-              lineHeight: 1.6
+              fontSize: '1.1rem',
+              lineHeight: 1.6,
+              color: '#666'
             }}
           >
             {description}
           </Typography>
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 0.5 }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {location && (
-              <Typography variant="body2" color="text.secondary">
-                <strong>交易地点：</strong>{location}
+              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <strong style={{ color: '#222' }}>交易地点：</strong>
+                <span style={{ color: '#666' }}>{location}</span>
               </Typography>
             )}
             {contact && (
-              <Typography variant="body2" color="text.secondary">
-                <strong>联系方式：</strong>{contact}
+              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <strong style={{ color: '#222' }}>联系方式：</strong>
+                <span style={{ color: '#666' }}>{contact}</span>
               </Typography>
             )}
           </Box>
-          <Typography
-            variant="h3"
-            sx={{
-              mt: 'auto',
-              fontWeight: 'bold',
-              color: '#222',
-              fontSize: { xs: '1.8rem', sm: '2.5rem' }
-            }}
-          >
-            ¥{price.toLocaleString()}
-          </Typography>
+          <Box sx={{ mt: 'auto', pt: 1.5 }}>
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 'bold',
+                color: '#222',
+                fontSize: { xs: '1.8rem', sm: '2.5rem' },
+                textAlign: 'right'
+              }}
+            >
+              ¥{price.toLocaleString()}
+            </Typography>
+          </Box>
         </CardContent>
       </Box>
     </Card>

@@ -216,8 +216,9 @@ The script verifies:
 
 ## About UI Design
 
-![UI Design Preview](assets/UIdesignDemo20250518_022624 - Copy.jpg)
-
+![UI Design Preview 1](assets/UIdesignDemo20250518_022624 - Copy.jpg)
+![UI Design Preview 2](assets/UIdesignDemo20250526_185408 - Copy.jpg)
+![UI Design Preview 3](assets/UIdesignDemo20250526_185429 - Copy.jpg)
 *UI Design Preview*
 
 This project is licensed under MIT, but please note:
